@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 1. 数据库 (用 Postgres 模拟 Kingbase)
+  db-service:
+    image: postgres:15-alpine
+    container_name: library-db
+    environment:
+      POSTGRES_DB: ustb_library
+      POSTGRES_USER: system
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "54321:5432"  # 外部端口:内部端口
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # 2. 后端 Java
+  backend-service:
+    build: ./backend
+    container_name: library-backend
+    ports:
+      - "8080:8080"
+    environment:
+      # 这里自动把 localhost 换成了 db-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-service:5432/ustb_library
+      SPRING_DATASOURCE_USERNAME: system
+      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_DATASOURCE_DRIVER-CLASS-NAME: org.postgresql.Driver
+    depends_on:
+      - db-service
+
+  # 3. 前端 Vue
+  frontend-service:
+    build: ./frontend
+    container_name: library-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-service
